@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"html/template"
 	"net/http"
 	"os"
@@ -60,7 +61,7 @@ func renderHTML(w http.ResponseWriter, htmlStrings []string) {
 	tpl.Execute(w, htmlValues)
 
 }
-func handler(w http.ResponseWriter, r *http.Request) {
+func resultHandler(w http.ResponseWriter, r *http.Request) {
 	md, _ := os.ReadFile("index.md")
 	scn := bufio.NewScanner(strings.NewReader(string(md)))
 
@@ -101,8 +102,34 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type Input struct {
+	Data string
+}
+
+func writeHandler(w http.ResponseWriter, r *http.Request) {
+
+	decoder := json.NewDecoder(r.Body)
+	var input Input
+	err := decoder.Decode(&input)
+	if err != nil {
+		panic(err)
+	}
+
+	os.WriteFile("index.md", []byte(input.Data), 0600)
+
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, _ := template.ParseFiles("edit.html")
+	tmpl.Execute(w, r)
+}
+
 func main() {
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", editHandler)
+	http.HandleFunc("/result", resultHandler)
+	http.HandleFunc("/create", writeHandler)
 
 	http.ListenAndServe(":8080", nil)
 }
