@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+type Data struct {
+	RawText string
+	HTML    []template.HTML
+}
+
 func RemoveMark(str string, mark string) (result string, found bool, color string) {
 
 	s := strings.Index(str, mark)
@@ -19,16 +24,16 @@ func RemoveMark(str string, mark string) (result string, found bool, color strin
 	switch mark {
 	case "#":
 		result = str[2:]
-		// return result, true
+
 	case "##":
 		result = str[3:]
-		// return result, true
+
 	case "###":
 		result = str[4:]
-		// return result, true
+
 	case "####":
 		result = str[5:]
-		// return result, true
+
 	default:
 		new := str[s+len(mark):]
 
@@ -49,16 +54,17 @@ func RemoveMark(str string, mark string) (result string, found bool, color strin
 
 	return result, true, color
 }
-func renderHTML(w http.ResponseWriter, htmlStrings []string) {
-	tpl, _ := template.ParseFiles("index.html")
+func renderHTML(w http.ResponseWriter, rawText string, htmlStrings []string) {
+	tpl, _ := template.ParseFiles("edit.html")
 
 	var htmlValues []template.HTML
 	for _, n := range htmlStrings {
 		htmlEncapsulate := template.HTML(n)
 		htmlValues = append(htmlValues, htmlEncapsulate)
 	}
+	data := &Data{RawText: rawText, HTML: htmlValues}
 
-	tpl.Execute(w, htmlValues)
+	tpl.Execute(w, data)
 
 }
 func resultHandler(w http.ResponseWriter, r *http.Request) {
@@ -66,19 +72,11 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	scn := bufio.NewScanner(strings.NewReader(string(md)))
 
 	var htmlValues []string
+
 	for scn.Scan() {
 		currentLine := scn.Text()
 
-		bold, isBold, color := RemoveMark(currentLine, "**")
-		if isBold {
-			bold = "<strong style=\"color:" + color + "\">" + bold + "</strong>"
-		}
-		italic, isItalic, color := RemoveMark(bold, "*")
-		if isItalic {
-			italic = "<em style=\"color:" + color + "\">" + italic + "</em>"
-		}
-
-		headingL4, isHeadingL4, color := RemoveMark(italic, "####")
+		headingL4, isHeadingL4, color := RemoveMark(currentLine, "####")
 		if isHeadingL4 {
 			headingL4 = "<h4 style=\"color:" + color + "\">" + headingL4 + "</h4>"
 		}
@@ -95,10 +93,20 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 		if isHeadingL1 {
 			headingL1 = "<h1 style=\"color:" + color + "\">" + headingL1 + "</h1>"
 		}
+		bold, isBold, color := RemoveMark(headingL1, "**")
+		if isBold {
+			bold = "<strong style=\"color:" + color + "\">" + bold + "</strong>"
+		}
+		italic, isItalic, color := RemoveMark(bold, "*")
+		if isItalic {
+			italic = "<em style=\"color:" + color + "\">" + italic + "</em>"
+		}
 
-		htmlValues = append(htmlValues, headingL1)
+		htmlValues = append(htmlValues, italic)
+
 	}
-	renderHTML(w, htmlValues)
+
+	renderHTML(w, string(md), htmlValues)
 
 }
 
@@ -121,14 +129,9 @@ func writeHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func editHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, _ := template.ParseFiles("edit.html")
-	tmpl.Execute(w, r)
-}
-
 func main() {
-	http.HandleFunc("/", editHandler)
-	http.HandleFunc("/result", resultHandler)
+	http.HandleFunc("/", resultHandler)
+
 	http.HandleFunc("/create", writeHandler)
 
 	http.ListenAndServe(":8080", nil)

@@ -1,37 +1,70 @@
+<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      
+      .main {
+        width: 100%;
+        display: flex;
+      }
+      .title {
+        text-align: center;
+      }
+      .btn {
+        margin: 10px auto;
+        display: flex;
+        font-size: 24px;
+      }
+      .textarea {
+        height: 500px;
+        padding: 10px;
+        width: 50%;
+        font-size: 18px;
+        border-style: none;
+      }
+      .section {
+        width: 50%;
+        padding: 10px;
+        font-size: 18px;
+        
+      }
+    </style>
     <title>Editer</title>
     <script>
-    
-    async   function send (){
-            const textarea =  document.getElementById("textarea");
-            const value = textarea.value;
-     const response = await fetch("http://localhost:8080/create",{
-            method: "POST",
-            body: JSON.stringify({
-                data: value
-            }),
-            headers: {
-                "Content-type": "application/json; charset=UTF-8"
-            }
+      async function convert() {
+        const textarea = document.getElementById("textarea");
+        const value = textarea.value;
+        const response = await fetch("http://localhost:8080/create", {
+          method: "POST",
+          body: JSON.stringify({
+            data: value,
+          }),
+          headers: {
+            "Content-type": "application/json; charset=UTF-8",
+          },
         });
-        
-        if (response.status == 200) {
-            
-            window.location.href ="http://localhost:8080/result"
-        }
-    }
-  
-    
-    </script>
-</head>
-<body>
 
-    <textarea cols="40" rows="30" name="text" id="textarea">write your markdown here..</textarea>
-    
-   <button id="btn" onclick="send()" >convert to HTML</button>
-</body>
+        if (response.status == 200) {
+          window.location.href = "http://localhost:8080/";
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title">MARKDOWN TO HTML CONVERTER</h1>
+
+      <div class="main">
+        <textarea id="textarea"  class="textarea">{{.RawText}}</textarea>
+        <section class="section">{{range $a, $b := .HTML}}{{$b}}{{end}}</section>
+      </div>
+      <button id="btn" class="btn" onclick="convert()">CONVERT</button>
+    </div>
+  </body>
 </html>
