@@ -14,12 +14,14 @@ type Data struct {
 	HTML    []template.HTML
 }
 
-func RemoveMark(str string, mark string) (result string, found bool, color string) {
+func RemoveMark(str string, mark string) (pre string, result string, suf string, found bool, color string) {
 
-	s := strings.Index(str, mark)
 	color = "black"
+	pre = ""
+	suf = ""
+	s := strings.Index(str, mark)
 	if s == -1 {
-		return str, false, color
+		return pre, str, suf, false, color
 	}
 	switch mark {
 	case "#":
@@ -35,24 +37,29 @@ func RemoveMark(str string, mark string) (result string, found bool, color strin
 		result = str[5:]
 
 	default:
-		new := str[s+len(mark):]
+		pre = str[:s]
 
+		new := str[s+len(mark):]
 		e := strings.Index(new, mark)
 
 		if e == -1 {
-			return str, false, color
+			return pre, str, suf, false, color
 		}
 		result = new[:e]
-	}
-
-	if result[0:4] == "clr=" {
-		i := strings.Index(result, "|")
-		color = result[4:i]
-		result = result[i+1:]
+		suf = str[strings.Index(str, result)+len(result)+len(mark):]
 
 	}
 
-	return result, true, color
+	if len(result) > 4 {
+
+		if result[0:4] == "clr=" {
+			i := strings.Index(result, "|")
+			color = result[4:i]
+			result = result[i+1:]
+
+		}
+	}
+	return pre, result, suf, true, color
 }
 func renderHTML(w http.ResponseWriter, rawText string, htmlStrings []string) {
 	tpl, _ := template.ParseFiles("edit.html")
@@ -74,35 +81,36 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	var htmlValues []string
 
 	for scn.Scan() {
-		currentLine := scn.Text()
 
-		headingL4, isHeadingL4, color := RemoveMark(currentLine, "####")
+		currentLine := strings.ReplaceAll(scn.Text(), "\\n", "<br/>")
+		_, headingL4, _, isHeadingL4, color := RemoveMark(currentLine, "####")
 		if isHeadingL4 {
 			headingL4 = "<h4 style=\"color:" + color + "\">" + headingL4 + "</h4>"
 		}
-		headingL3, isHeadingL3, color := RemoveMark(headingL4, "###")
+		_, headingL3, _, isHeadingL3, color := RemoveMark(headingL4, "###")
 		if isHeadingL3 {
 			headingL3 = "<h3 style=\"color:" + color + "\">" + headingL3 + "</h3>"
 		}
 
-		headingL2, isHeadingL2, color := RemoveMark(headingL3, "##")
+		_, headingL2, _, isHeadingL2, color := RemoveMark(headingL3, "##")
 		if isHeadingL2 {
 			headingL2 = "<h2 style=\"color:" + color + "\">" + headingL2 + "</h2>"
 		}
-		headingL1, isHeadingL1, color := RemoveMark(headingL2, "#")
+		_, headingL1, _, isHeadingL1, color := RemoveMark(headingL2, "#")
 		if isHeadingL1 {
 			headingL1 = "<h1 style=\"color:" + color + "\">" + headingL1 + "</h1>"
 		}
-		bold, isBold, color := RemoveMark(headingL1, "**")
+		pre, bold, suf, isBold, color := RemoveMark(headingL1, "**")
 		if isBold {
-			bold = "<strong style=\"color:" + color + "\">" + bold + "</strong>"
+			bold = pre + "<strong style=\"color:" + color + "\">" + bold + "</strong>" + suf
 		}
-		italic, isItalic, color := RemoveMark(bold, "*")
+		pre, italic, suf, isItalic, color := RemoveMark(bold, "*")
 		if isItalic {
-			italic = "<em style=\"color:" + color + "\">" + italic + "</em>"
+
+			italic = pre + "<em style=\"color:" + color + "\">" + italic + "</em>" + suf
 		}
 
-		htmlValues = append(htmlValues, italic)
+		htmlValues = append(htmlValues, italic+"<br/>")
 
 	}
 
