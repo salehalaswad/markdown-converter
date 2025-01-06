@@ -14,65 +14,132 @@ type Data struct {
 	HTML    []template.HTML
 }
 
-func RemoveMark(str string, mark string) (pre string, result string, suf string, found bool, color string) {
+const (
+	H1 = iota
+	H2
+	H3
+	H4
+	H5
+	H6
+	Bold
+	Italic
+	Span
+)
 
-	color = "black"
-	pre = ""
-	suf = ""
-	s := strings.Index(str, mark)
-	colored := strings.Contains(str, "[clr=")
-	if colored {
+func converToHTML(before, target, after, color string, tag int) (result string) {
 
-		begin := strings.Index(str, "[clr=")
-		pre = str[:begin]
-		end := strings.Index(str, "|")
-		clr := str[begin+len("[clr=") : end]
-		endWord := strings.Index(str, "]")
-		suf = str[endWord+len("]"):]
-		word := str[end+len("|") : endWord]
-		return pre, word, suf, true, clr
-	}
-	if s == -1 {
-		return pre, str, suf, false, color
-	}
-	switch mark {
-	case "#":
-		result = str[2:]
-
-	case "##":
-		result = str[3:]
-
-	case "###":
-		result = str[4:]
-
-	case "####":
-		result = str[5:]
-
-	default:
-		pre = str[:s]
-
-		new := str[s+len(mark):]
-		e := strings.Index(new, mark)
-
-		if e == -1 {
-			return pre, str, suf, false, color
-		}
-		result = new[:e]
-		suf = str[strings.Index(str, result)+len(result)+len(mark):]
+	switch tag {
+	case Span:
+		result = "<span style=\"color:" + color + " \" >" + target + "</span>"
+	case Bold:
+		result = "<strong style=\"color:" + color + " \" >" + target + "</strong>"
+	case Italic:
+		result = "<em style=\"color:" + color + " \" >" + target + "</em>"
+	case H1:
+		result = "<h1 style=\"color:" + color + " \" >" + target + "</h1>"
+	case H2:
+		result = "<h2 style=\"color:" + color + " \" >" + target + "</h2>"
+	case H3:
+		result = "<h3 style=\"color:" + color + " \" >" + target + "</h3>"
+	case H4:
+		result = "<h4 style=\"color:" + color + " \" >" + target + "</h4>"
+	case H5:
+		result = "<h5 style=\"color:" + color + " \" >" + target + "</h5>"
+	case H6:
+		result = "<h6 style=\"color:" + color + " \" >" + target + "</h6>"
 
 	}
-
-	if len(result) > 4 {
-
-		if result[0:4] == "clr=" {
-			i := strings.Index(result, "|")
-			color = result[4:i]
-			result = result[i+1:]
-
-		}
-	}
-	return pre, result, suf, true, color
+	return before + result + after
 }
+func span(rawText string) string {
+	indexOfAttr := strings.Index(rawText, "[clr=")
+	textAfterAttr := rawText[indexOfAttr:]
+	textBeforeAttr := rawText[:indexOfAttr]
+	indexOfPipe := strings.Index(textAfterAttr, "|")
+	indexOfBracket := strings.Index(textAfterAttr, "]")
+	clr := textAfterAttr[len("[clr="):indexOfPipe]
+	targetText := textAfterAttr[indexOfPipe+1 : indexOfBracket]
+	textAfterTarget := textAfterAttr[indexOfBracket+1:]
+	rawText = converToHTML(textBeforeAttr, targetText, textAfterTarget, clr, Span)
+	return rawText
+}
+func bold(rawText string) string {
+	indexOfFirstDinkus := strings.Index(rawText, "**")
+	textBeforeDinkus := rawText[:indexOfFirstDinkus]
+	textAfterDinkus := rawText[indexOfFirstDinkus+2:]
+	indexOfSecondDinkus := strings.Index(textAfterDinkus, "**")
+	target := textAfterDinkus[:indexOfSecondDinkus]
+	textAfterDinkus = textAfterDinkus[indexOfSecondDinkus+2:]
+	clr := "black"
+	if strings.HasPrefix(target, "clr=") {
+
+		indexOfPipe := strings.Index(target, "|")
+		clr = target[len("clr="):indexOfPipe]
+
+		target = target[indexOfPipe+1:]
+	}
+	rawText = converToHTML(textBeforeDinkus, target, textAfterDinkus, clr, Bold)
+	return rawText
+}
+func italic(rawText string) string {
+	indexOfFirstDinkus := strings.Index(rawText, "*")
+	textBeforeDinkus := rawText[:indexOfFirstDinkus]
+	textAfterDinkus := rawText[indexOfFirstDinkus+1:]
+	indexOfSecondDinkus := strings.Index(textAfterDinkus, "*")
+	target := textAfterDinkus[:indexOfSecondDinkus]
+	textAfterDinkus = textAfterDinkus[indexOfSecondDinkus+1:]
+	clr := "black"
+	if strings.HasPrefix(target, "clr=") {
+
+		indexOfPipe := strings.Index(target, "|")
+		clr = target[len("clr="):indexOfPipe]
+
+		target = target[indexOfPipe+1:]
+	}
+	rawText = converToHTML(textBeforeDinkus, target, textAfterDinkus, clr, Italic)
+	return rawText
+}
+func cutText(rawText string) string {
+
+	for strings.Contains(rawText, "[clr=") {
+		rawText = span(rawText)
+	}
+	if strings.HasPrefix(rawText, "#") {
+		headingLevel := strings.Count(rawText, "#")
+		clr := "black"
+		rawText = rawText[headingLevel+1:]
+		if strings.HasPrefix(rawText, "clr=") {
+
+			indexOfPipe := strings.Index(rawText, "|")
+			clr = rawText[len("clr="):indexOfPipe]
+
+			rawText = rawText[indexOfPipe+1:]
+		}
+		switch headingLevel {
+		case 1:
+			rawText = converToHTML("", rawText, "", clr, H1)
+		case 2:
+			rawText = converToHTML("", rawText, "", clr, H2)
+		case 3:
+			rawText = converToHTML("", rawText, "", clr, H3)
+		case 4:
+			rawText = converToHTML("", rawText, "", clr, H4)
+		case 5:
+			rawText = converToHTML("", rawText, "", clr, H5)
+		case 6:
+			rawText = converToHTML("", rawText, "", clr, H6)
+		}
+	}
+	for strings.Contains(rawText, "**") {
+		rawText = bold(rawText)
+	}
+	for strings.Contains(rawText, "*") {
+		rawText = italic(rawText)
+	}
+
+	return rawText
+}
+
 func renderHTML(w http.ResponseWriter, rawText string, htmlStrings []string) {
 	tpl, _ := template.ParseFiles("edit.html")
 
@@ -86,7 +153,9 @@ func renderHTML(w http.ResponseWriter, rawText string, htmlStrings []string) {
 	tpl.Execute(w, data)
 
 }
+
 func resultHandler(w http.ResponseWriter, r *http.Request) {
+
 	md, _ := os.ReadFile("index.md")
 	scn := bufio.NewScanner(strings.NewReader(string(md)))
 
@@ -95,43 +164,10 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	for scn.Scan() {
 
 		currentLine := strings.ReplaceAll(scn.Text(), "\\n", "<br/>")
-		pre, paragraph, suf, isColored, color := RemoveMark(currentLine, "")
-		if isColored {
 
-			paragraph = pre + "<span style=\"color:" + color + "\">" + paragraph + "</span>" + suf
-		}
-
-		_, headingL4, _, isHeadingL4, color := RemoveMark(paragraph, "####")
-		if isHeadingL4 {
-			headingL4 = "<h4 style=\"color:" + color + "\">" + headingL4 + "</h4>"
-		}
-
-		pre, headingL3, suf, isHeadingL3, color := RemoveMark(headingL4, "###")
-		if isHeadingL3 {
-			headingL3 = pre + "<h3 style=\"color:" + color + "\">" + headingL3 + "</h3>" + suf
-		}
-
-		pre, headingL2, suf, isHeadingL2, color := RemoveMark(headingL3, "##")
-		if isHeadingL2 {
-			headingL2 = pre + "<h2 style=\"color:" + color + "\">" + headingL2 + "</h2>" + suf
-		}
-		pre, headingL1, suf, isHeadingL1, color := RemoveMark(headingL2, "#")
-		if isHeadingL1 {
-			headingL1 = pre + "<h1 style=\"color:" + color + "\">" + headingL1 + "</h1>" + suf
-		}
-
-		pre, bold, suf, isBold, color := RemoveMark(headingL1, "**")
-		if isBold {
-			bold = pre + "<strong style=\"color:" + color + "\">" + bold + "</strong>" + suf
-
-		}
-		pre, italic, suf, isItalic, color := RemoveMark(bold, "*")
-		if isItalic {
-
-			italic = pre + "<em style=\"color:" + color + "\">" + italic + "</em>" + suf
-		}
-		htmlValues = append(htmlValues, italic+"<br/>")
-
+		cutted := cutText(currentLine)
+		cutted += "<br/>"
+		htmlValues = append(htmlValues, cutted)
 	}
 
 	renderHTML(w, string(md), htmlValues)
