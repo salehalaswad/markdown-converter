@@ -17,3 +17,6 @@ _____________
 #### this will work! you need no space after the "*"
     **clr=#fff| click here for more information
 #### this won't work!! only named colors are allowed
+
+
+https://github.com/salehalaswad/markdown-converter
