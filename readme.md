@@ -19,4 +19,5 @@ _____________
 #### this won't work!! only named colors are allowed
 
 
-https://github.com/salehalaswad/markdown-converter
+the project idea from roadmap.de:
+https://roadmap.sh/projects/markdown-note-taking-app
